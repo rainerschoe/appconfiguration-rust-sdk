@@ -14,16 +14,16 @@
 
 use std::collections::HashMap;
 
+use crate::errors::{Error, Result};
 use crate::models::Segment;
 use crate::{
     entity::{AttrValue, Entity},
     models::TargetingRule,
 };
-use crate::errors::{Result, Error};
 
 // For chaining errors creating useful error messages:
-use anyhow::{Context, Result as AnyhowResult};
 use anyhow::anyhow;
+use anyhow::{Context, Result as AnyhowResult};
 
 pub(crate) fn find_applicable_segment_rule_for_entity(
     segments: &HashMap<String, Segment>,
@@ -33,19 +33,24 @@ pub(crate) fn find_applicable_segment_rule_for_entity(
     let mut targeting_rules = segment_rules.collect::<Vec<_>>();
     targeting_rules.sort_by(|a, b| a.order.cmp(&b.order));
 
-    for targeting_rule in targeting_rules.into_iter(){
-        if targeting_rule_applies_to_entity(segments, &targeting_rule, entity)
-        .map_err(
-            |e|{
-            // This terminates the use of anyhow in this module, converting all errors:
-            let cause: String = e.chain().map(|c| format!("\nCaused by: {c}")).collect();
-            Error::EntityEvaluationError(format!("Failed to evaluate entity '{}' against targeting rule '{}'.{cause}", entity.get_id(), targeting_rule.order))
-        })?
-        {
-            return Ok(Some(targeting_rule));
-        }
-    }
-    return Ok(None)
+    targeting_rules
+        .into_iter()
+        .find_map(|targeting_rule| {
+            match targeting_rule_applies_to_entity(segments, &targeting_rule, entity) {
+                Ok(true) => Some(Ok(targeting_rule)),
+                Ok(false) => None,
+                Err(e) => {
+                    // This terminates the use of anyhow in this module, converting all errors:
+                    let cause: String = e.chain().map(|c| format!("\nCaused by: {c}")).collect();
+                    Some(Err(Error::EntityEvaluationError(format!(
+                        "Failed to evaluate entity '{}' against targeting rule '{}'.{cause}",
+                        entity.get_id(),
+                        targeting_rule.order
+                    ))))
+                }
+            }
+        })
+        .transpose()
 }
 
 fn targeting_rule_applies_to_entity(
@@ -55,9 +60,11 @@ fn targeting_rule_applies_to_entity(
 ) -> AnyhowResult<bool> {
     // TODO: we need to get the naming correct here to distinguish between rules, segments, segment_ids, targeting_rules etc. correctly
     let rules = &targeting_rule.rules;
-    for rule in rules.iter(){
+    for rule in rules.iter() {
         let rule_applies = segment_applies_to_entity(segments, &rule.segments, entity)?;
-        if rule_applies {return Ok(true)}
+        if rule_applies {
+            return Ok(true);
+        }
     }
     Ok(false)
 }
@@ -67,11 +74,15 @@ fn segment_applies_to_entity(
     segment_ids: &[String],
     entity: &impl Entity,
 ) -> AnyhowResult<bool> {
-    for segment_id in segment_ids.iter(){
-        let segment = segments.get(segment_id)
-            .ok_or(Error::Other(format!("Segment '{segment_id}' not found.").into()))?;
-        let applies = belong_to_segment(segment, entity.get_attributes()).context(format!("Failed to evaluate segment '{segment_id}'"))?;
-        if applies {return Ok(true)}
+    for segment_id in segment_ids.iter() {
+        let segment = segments.get(segment_id).ok_or(Error::Other(
+            format!("Segment '{segment_id}' not found.").into(),
+        ))?;
+        let applies = belong_to_segment(segment, entity.get_attributes())
+            .context(format!("Failed to evaluate segment '{segment_id}'"))?;
+        if applies {
+            return Ok(true);
+        }
     }
     Ok(false)
 }
@@ -83,31 +94,40 @@ fn belong_to_segment(segment: &Segment, attrs: HashMap<String, AttrValue>) -> An
         let attr_value = attrs
             .get(attr_name)
             .ok_or(Error::Other(format!("Operation '{attr_name}' '{operator}' '[...]' failed to evaluate: '{attr_name}' not found in entity")))?;
-        for value in rule.values.iter()
-        {
-            let result = check_operator(attr_value, operator, value).context(format!("Operation '{attr_name}' '{operator}' '{value}' failed to evaluate."))?;
-            if result {return Ok(true)}
+        for value in rule.values.iter() {
+            let result = check_operator(attr_value, operator, value).context(format!(
+                "Operation '{attr_name}' '{operator}' '{value}' failed to evaluate."
+            ))?;
+            if result {
+                return Ok(true);
+            }
         }
         return Ok(false);
     }
     Ok(true)
 }
 
-fn check_operator(attribute_value: &AttrValue, operator: &str, reference_value: &str) -> AnyhowResult<bool> {
+fn check_operator(
+    attribute_value: &AttrValue,
+    operator: &str,
+    reference_value: &str,
+) -> AnyhowResult<bool> {
     match operator {
         "is" => match attribute_value {
             AttrValue::String(data) => Ok(*data == reference_value),
             AttrValue::Boolean(data) => {
                 let result = *data
                     == reference_value
-                        .parse::<bool>().map_err(|_| anyhow!("Entity attribute has unexpected type: Boolean."))?;
+                        .parse::<bool>()
+                        .map_err(|_| anyhow!("Entity attribute has unexpected type: Boolean."))?;
                 Ok(result)
             }
             AttrValue::Numeric(data) => {
                 let result = *data
                     == reference_value
-                        .parse::<f64>().map_err(|_| anyhow!("Entity attribute has unexpected type: Number."))?;
-                    Ok(result)
+                        .parse::<f64>()
+                        .map_err(|_| anyhow!("Entity attribute has unexpected type: Number."))?;
+                Ok(result)
             }
         },
         "contains" => match attribute_value {
@@ -167,9 +187,7 @@ fn check_operator(attribute_value: &AttrValue, operator: &str, reference_value: 
             }
             _ => Err(anyhow!("Entity attribute is not a number.")),
         },
-        _ => {
-            Err(anyhow!("Operator not implemented"))
-        }
+        _ => Err(anyhow!("Operator not implemented")),
     }
 }
 
@@ -201,7 +219,7 @@ pub mod tests {
     }
 
     #[fixture]
-    fn segment_rules() -> Vec<TargetingRule>{
+    fn segment_rules() -> Vec<TargetingRule> {
         vec![TargetingRule {
             rules: vec![Segments {
                 segments: vec!["some_segment_id_1".into()],
@@ -213,13 +231,19 @@ pub mod tests {
     }
 
     #[rstest]
-    fn test_attribute_not_found(segments: HashMap<String, Segment>, segment_rules: Vec<TargetingRule>) {
+    fn test_attribute_not_found(
+        segments: HashMap<String, Segment>,
+        segment_rules: Vec<TargetingRule>,
+    ) {
         let entity = crate::tests::GenericEntity {
             id: "a2".into(),
             attributes: HashMap::from([("name2".into(), AttrValue::from("heinz".to_string()))]),
         };
-        let rule =
-            find_applicable_segment_rule_for_entity(&segments, segment_rules.clone().into_iter(), &entity);
+        let rule = find_applicable_segment_rule_for_entity(
+            &segments,
+            segment_rules.clone().into_iter(),
+            &entity,
+        );
         // Error message should look something like this:
         //  Failed to evaluate entity 'a2' against targeting rule '0'.
         //  Caused by: Failed to evaluate segment 'some_segment_id_1'
