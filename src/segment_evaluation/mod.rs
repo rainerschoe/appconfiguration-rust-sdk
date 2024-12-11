@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod errors;
+
 use std::collections::HashMap;
 
-use crate::errors::{Error, Result};
+use crate::entity::{AttrValue, Entity};
+use crate::errors::Result;
 use crate::models::Segment;
-use crate::{
-    entity::{AttrValue, Entity},
-    models::TargetingRule,
-};
-
-// For chaining errors creating useful error messages:
-use anyhow::anyhow;
-use anyhow::{Context, Result as AnyhowResult};
+use crate::models::TargetingRule;
+pub(crate) use errors::{CheckOperatorErrorDetail, SegmentEvaluationError};
 
 pub(crate) fn find_applicable_segment_rule_for_entity(
     segments: &HashMap<String, Segment>,
@@ -34,26 +31,18 @@ pub(crate) fn find_applicable_segment_rule_for_entity(
     targeting_rules.sort_by(|a, b| a.order.cmp(&b.order));
 
     for targeting_rule in targeting_rules.into_iter() {
-        if targeting_rule_applies_to_entity(segments, &targeting_rule, entity).map_err(|e| {
-            // This terminates the use of anyhow in this module, converting all errors:
-            let cause: String = e.chain().map(|c| format!("\nCaused by: {c}")).collect();
-            Error::EntityEvaluationError(format!(
-                "Failed to evaluate entity '{}' against targeting rule '{}'.{cause}",
-                entity.get_id(),
-                targeting_rule.order
-            ))
-        })? {
+        if targeting_rule_applies_to_entity(segments, &targeting_rule, entity)? {
             return Ok(Some(targeting_rule));
         }
     }
-    return Ok(None);
+    Ok(None)
 }
 
 fn targeting_rule_applies_to_entity(
     segments: &HashMap<String, Segment>,
     targeting_rule: &TargetingRule,
     entity: &impl Entity,
-) -> AnyhowResult<bool> {
+) -> std::result::Result<bool, SegmentEvaluationError> {
     // TODO: we need to get the naming correct here to distinguish between rules, segments, segment_ids, targeting_rules etc. correctly
     let rules = &targeting_rule.rules;
     for rule in rules.iter() {
@@ -69,13 +58,14 @@ fn segment_applies_to_entity(
     segments: &HashMap<String, Segment>,
     segment_ids: &[String],
     entity: &impl Entity,
-) -> AnyhowResult<bool> {
+) -> std::result::Result<bool, SegmentEvaluationError> {
     for segment_id in segment_ids.iter() {
-        let segment = segments.get(segment_id).ok_or(Error::Other(
-            format!("Segment '{segment_id}' not found.").into(),
-        ))?;
-        let applies = belong_to_segment(segment, entity.get_attributes())
-            .context(format!("Failed to evaluate segment '{segment_id}'"))?;
+        let segment = segments
+            .get(segment_id)
+            .ok_or(SegmentEvaluationError::SegmentIdNotFound(
+                segment_id.clone(),
+            ))?;
+        let applies = belong_to_segment(segment, entity.get_attributes())?;
         if applies {
             return Ok(true);
         }
@@ -83,7 +73,10 @@ fn segment_applies_to_entity(
     Ok(false)
 }
 
-fn belong_to_segment(segment: &Segment, attrs: HashMap<String, AttrValue>) -> AnyhowResult<bool> {
+fn belong_to_segment(
+    segment: &Segment,
+    attrs: HashMap<String, AttrValue>,
+) -> std::result::Result<bool, SegmentEvaluationError> {
     for rule in segment.rules.iter() {
         let operator = &rule.operator;
         let attr_name = &rule.attribute_name;
@@ -94,31 +87,25 @@ fn belong_to_segment(segment: &Segment, attrs: HashMap<String, AttrValue>) -> An
         let rule_result = match attr_value {
             None => {
                 println!("Warning: Operation '{attr_name}' '{operator}' '[...]' failed to evaluate: '{attr_name}' not found in entity");
-                Ok(false)
+                false
             }
             Some(attr_value) => {
                 // FIXME: the following algorithm is too hard to read. Is it just me or do we need to simplify this?
                 // One of the values needs to match.
                 // Find a candidate (a candidate corresponds to a value which matches or which might match but the operator failed):
-                let candidate = rule.values.iter().find_map(|value| {
-                    let result_for_value =
-                        check_operator(attr_value, operator, value).context(format!(
-                            "Operation '{attr_name}' '{operator}' '{value}' failed to evaluate."
-                        ));
-                    match result_for_value {
-                        Ok(true) => Some(Ok(())),
+                let candidate = rule
+                    .values
+                    .iter()
+                    .find_map(|value| match check_operator(attr_value, operator, value) {
+                        Ok(true) => Some(Ok::<_, SegmentEvaluationError>(())),
                         Ok(false) => None,
-                        Err(e) => Some(Err(e)),
-                    }
-                });
+                        Err(e) => Some(Err((e, segment, rule, value).into())),
+                    })
+                    .transpose()?;
                 // check if the candidate is good, or if the operator failed:
-                match candidate {
-                    None => Ok(false),
-                    Some(Ok(())) => Ok(true),
-                    Some(Err(e)) => Err(e),
-                }
+                candidate.is_some()
             }
-        }?;
+        };
         // All rules must match:
         if !rule_result {
             return Ok(false);
@@ -131,89 +118,52 @@ fn check_operator(
     attribute_value: &AttrValue,
     operator: &str,
     reference_value: &str,
-) -> AnyhowResult<bool> {
+) -> std::result::Result<bool, CheckOperatorErrorDetail> {
     match operator {
         "is" => match attribute_value {
             AttrValue::String(data) => Ok(*data == reference_value),
-            AttrValue::Boolean(data) => {
-                let result = *data
-                    == reference_value
-                        .parse::<bool>()
-                        .map_err(|_| anyhow!("Entity attribute has unexpected type: Boolean."))?;
-                Ok(result)
-            }
-            AttrValue::Numeric(data) => {
-                let result = *data
-                    == reference_value
-                        .parse::<f64>()
-                        .map_err(|_| anyhow!("Entity attribute has unexpected type: Number."))?;
-                Ok(result)
-            }
+            AttrValue::Boolean(data) => Ok(*data == reference_value.parse::<bool>()?),
+            AttrValue::Numeric(data) => Ok(*data == reference_value.parse::<f64>()?),
         },
         "contains" => match attribute_value {
             AttrValue::String(data) => Ok(data.contains(reference_value)),
-            _ => Err(anyhow!("Entity attribute is not a string.")),
+            _ => Err(CheckOperatorErrorDetail::StringExpected),
         },
         "startsWith" => match attribute_value {
             AttrValue::String(data) => Ok(data.starts_with(reference_value)),
-            _ => Err(anyhow!("Entity attribute is not a string.")),
+            _ => Err(CheckOperatorErrorDetail::StringExpected),
         },
         "endsWith" => match attribute_value {
             AttrValue::String(data) => Ok(data.ends_with(reference_value)),
-            _ => Err(anyhow!("Entity attribute is not a string.")),
+            _ => Err(CheckOperatorErrorDetail::StringExpected),
         },
         "greaterThan" => match attribute_value {
             // TODO: Go implementation also compares strings (by parsing them as floats). Do we need this?
             //       https://github.com/IBM/appconfiguration-go-sdk/blob/master/lib/internal/models/Rule.go#L82
             // TODO: we could have numbers not representable as f64, maybe we should try to parse it to i64 and u64 too?
-            // TODO: we should have a different nesting style here: match the reference_value first and error out when given
-            //       entity attr does not match. This would yield more natural error messages
-            AttrValue::Numeric(data) => {
-                let result = *data
-                    > reference_value
-                        .parse()
-                        .map_err(|_| Error::Other("Value cannot convert into f64.".into()))?;
-                Ok(result)
-            }
-            _ => Err(anyhow!("Entity attribute is not a number.")),
+            AttrValue::Numeric(data) => Ok(*data > reference_value.parse()?),
+            _ => Err(CheckOperatorErrorDetail::EntityAttrNotANumber),
         },
         "lesserThan" => match attribute_value {
-            AttrValue::Numeric(data) => {
-                let result = *data
-                    < reference_value
-                        .parse()
-                        .map_err(|_| Error::Other("Value cannot convert into f64.".into()))?;
-                Ok(result)
-            }
-            _ => Err(anyhow!("Entity attribute is not a number.")),
+            AttrValue::Numeric(data) => Ok(*data < reference_value.parse()?),
+            _ => Err(CheckOperatorErrorDetail::EntityAttrNotANumber),
         },
         "greaterThanEquals" => match attribute_value {
-            AttrValue::Numeric(data) => {
-                let result = *data
-                    >= reference_value
-                        .parse()
-                        .map_err(|_| Error::Other("Value cannot convert into f64.".into()))?;
-                Ok(result)
-            }
-            _ => Err(anyhow!("Entity attribute is not a number.")),
+            AttrValue::Numeric(data) => Ok(*data >= reference_value.parse()?),
+            _ => Err(CheckOperatorErrorDetail::EntityAttrNotANumber),
         },
         "lesserThanEquals" => match attribute_value {
-            AttrValue::Numeric(data) => {
-                let result = *data
-                    <= reference_value
-                        .parse()
-                        .map_err(|_| Error::Other("Value cannot convert into f64.".into()))?;
-                Ok(result)
-            }
-            _ => Err(anyhow!("Entity attribute is not a number.")),
+            AttrValue::Numeric(data) => Ok(*data <= reference_value.parse()?),
+            _ => Err(CheckOperatorErrorDetail::EntityAttrNotANumber),
         },
-        _ => Err(anyhow!("Operator not implemented")),
+        _ => Err(CheckOperatorErrorDetail::OperatorNotImplemented),
     }
 }
 
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use crate::errors::{EntityEvaluationError, Error};
     use crate::{
         models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule},
         AttrValue,
@@ -293,11 +243,20 @@ pub mod tests {
         //  Failed to evaluate entity: Failed to evaluate entity 'a2' against targeting rule '0'.
         //  Caused by: Segment 'non_existing_segment_id' not found.
         // We are checking here that the parts are present to allow debugging of config by the user:
-        let msg = rule.unwrap_err().to_string();
-        assert!(msg.contains("'a2'"));
-        assert!(msg.contains("'0'"));
-        assert!(msg.contains("'non_existing_segment_id'"));
-        assert!(msg.contains("not found"));
+        let e = rule.unwrap_err();
+        assert!(matches!(e, Error::EntityEvaluationError(_)));
+        let Error::EntityEvaluationError(EntityEvaluationError(
+            SegmentEvaluationError::SegmentIdNotFound(ref segment_id),
+        )) = e
+        else {
+            panic!("Error type mismatch!");
+        };
+        assert_eq!(segment_id, "non_existing_segment_id");
+        // let msg = rule.unwrap_err().to_string();
+        // assert!(msg.contains("'a2'"));
+        // assert!(msg.contains("'0'"));
+        // assert!(msg.contains("'non_existing_segment_id'"));
+        // assert!(msg.contains("not found"));
     }
 
     // SCENARIO - evaluating an operator fails. Meaning, [for example] user has added a numeric value(int/float) in appconfig segment attribute, but in their application they pass the attribute with a boolean value.
@@ -316,11 +275,17 @@ pub mod tests {
         //  Caused by: Operation 'name' 'is' 'heinz' failed to evaluate.
         //  Caused by: Entity attribute has unexpected type: Number.
         // We are checking here that the parts are present to allow debugging of config by the user:
-        let msg = rule.unwrap_err().to_string();
-        assert!(msg.contains("'a2'"));
-        assert!(msg.contains("'0'"));
-        assert!(msg.contains("'some_segment_id_1'"));
-        assert!(msg.contains("'name' 'is' 'heinz'"));
-        assert!(msg.contains("Entity attribute has unexpected type: Number"));
+
+        let e = rule.unwrap_err();
+        assert!(matches!(e, Error::EntityEvaluationError(_)));
+        let Error::EntityEvaluationError(EntityEvaluationError(
+            SegmentEvaluationError::SegmentEvaluationFailed(ref error),
+        )) = e
+        else {
+            panic!("Error type mismatch!");
+        };
+        assert_eq!(error.segment.name, "");
+        assert_eq!(error.segment_rule.attribute_name, "name");
+        assert_eq!(error.value, "heinz");
     }
 }

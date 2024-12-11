@@ -2,6 +2,8 @@ use std::sync::PoisonError;
 
 use thiserror::Error;
 
+use crate::segment_evaluation::SegmentEvaluationError;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
@@ -42,10 +44,20 @@ pub enum Error {
     ConfigurationAccessError(#[from] ConfigurationAccessError),
 
     #[error("Failed to evaluate entity: {0}")]
-    EntityEvaluationError(String),
+    EntityEvaluationError(EntityEvaluationError),
 
     #[error("{0}")]
     Other(String),
+}
+
+#[derive(Debug, Error)]
+#[error(transparent)]
+pub struct EntityEvaluationError(pub(crate) SegmentEvaluationError);
+
+impl From<SegmentEvaluationError> for Error {
+    fn from(value: SegmentEvaluationError) -> Self {
+        Self::EntityEvaluationError(EntityEvaluationError(value))
+    }
 }
 
 impl<T> From<PoisonError<T>> for Error {
