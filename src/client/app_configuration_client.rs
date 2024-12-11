@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::client::cache::ConfigurationSnapshot;
-use crate::client::feature::Feature;
+use crate::client::feature::FeatureSnapshot;
 pub use crate::client::feature_proxy::FeatureProxy;
 use crate::client::http;
 use crate::client::property::Property;
@@ -184,7 +184,7 @@ impl AppConfigurationClient {
             .collect())
     }
 
-    pub fn get_feature(&self, feature_id: &str) -> Result<Feature> {
+    pub fn get_feature(&self, feature_id: &str) -> Result<FeatureSnapshot> {
         let config_snapshot = self.latest_config_snapshot.lock()?;
 
         // Get the feature from the snapshot
@@ -221,21 +221,18 @@ impl AppConfigurationClient {
             segments
         };
 
-        Ok(Feature::new(feature.clone(), segments))
+        Ok(FeatureSnapshot::new(feature.clone(), segments))
     }
 
     /// Searches for the feature `feature_id` inside the current configured
     /// collection, and environment.
     ///
     /// Return `Ok(feature)` if the feature exists or `Err` if it does not.
-    pub fn get_feature_proxy(&self, feature_id: &str) -> Result<FeatureProxy> {
+    pub fn get_feature_proxy<'a>(&'a self, feature_id: &str) -> Result<FeatureProxy<'a>> {
         // FIXME: there is and was no validation happening if the feature exists.
         // Comments and error messages in FeatureProxy suggest that this should happen here.
         // same applies for properties.
-        Ok(FeatureProxy::new(
-            self.latest_config_snapshot.clone(),
-            feature_id.to_string(),
-        ))
+        Ok(FeatureProxy::new(self, feature_id.to_string()))
     }
 
     pub fn get_property_ids(&self) -> Result<Vec<String>> {

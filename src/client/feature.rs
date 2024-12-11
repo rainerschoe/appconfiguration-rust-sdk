@@ -14,6 +14,7 @@
 
 use crate::client::value::{NumericValue, Value};
 use crate::entity::Entity;
+use crate::Feature;
 use std::collections::HashMap;
 
 use super::feature_proxy::random_value;
@@ -22,41 +23,17 @@ use crate::segment_evaluation::find_applicable_segment_rule_for_entity;
 use crate::errors::{Error, Result};
 
 #[derive(Debug)]
-pub struct Feature {
+pub struct FeatureSnapshot {
     feature: crate::models::Feature,
     segments: HashMap<String, crate::models::Segment>,
 }
 
-impl Feature {
+impl FeatureSnapshot {
     pub(crate) fn new(
         feature: crate::models::Feature,
         segments: HashMap<String, crate::models::Segment>,
     ) -> Self {
         Self { feature, segments }
-    }
-
-    pub fn get_value(&self, entity: &impl Entity) -> Result<Value> {
-        let model_value = self.evaluate_feature_for_entity(entity)?;
-
-        let value = match self.feature.kind {
-            crate::models::ValueKind::Numeric => {
-                Value::Numeric(NumericValue(model_value.0.clone()))
-            }
-            crate::models::ValueKind::Boolean => Value::Boolean(
-                model_value
-                    .0
-                    .as_bool()
-                    .ok_or(Error::ProtocolError("Expected Boolean".into()))?,
-            ),
-            crate::models::ValueKind::String => Value::String(
-                model_value
-                    .0
-                    .as_str()
-                    .ok_or(Error::ProtocolError("Expected String".into()))?
-                    .to_string(),
-            ),
-        };
-        Ok(value)
     }
 
     fn evaluate_feature_for_entity(
@@ -124,6 +101,52 @@ impl Feature {
     }
 }
 
+impl Feature for FeatureSnapshot {
+    fn get_id(&self) -> &str {
+        &self.feature.feature_id
+    }
+
+    fn get_name(&self) -> Result<String> {
+        Ok(self.feature.name.clone())
+    }
+
+    fn get_data_type(&self) -> Result<crate::models::ValueKind> {
+        Ok(self.feature.kind)
+    }
+
+    fn is_enabled(&self) -> Result<bool> {
+        Ok(self.feature.enabled)
+    }
+
+    fn get_enabled_value(&self) -> Result<crate::models::ConfigValue> {
+        Ok(self.feature.enabled_value.clone())
+    }
+
+    fn get_value(&self, entity: &impl Entity) -> Result<Value> {
+        let model_value = self.evaluate_feature_for_entity(entity)?;
+
+        let value = match self.feature.kind {
+            crate::models::ValueKind::Numeric => {
+                Value::Numeric(NumericValue(model_value.0.clone()))
+            }
+            crate::models::ValueKind::Boolean => Value::Boolean(
+                model_value
+                    .0
+                    .as_bool()
+                    .ok_or(Error::ProtocolError("Expected Boolean".into()))?,
+            ),
+            crate::models::ValueKind::String => Value::String(
+                model_value
+                    .0
+                    .as_str()
+                    .ok_or(Error::ProtocolError("Expected String".into()))?
+                    .to_string(),
+            ),
+        };
+        Ok(value)
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
 
@@ -143,16 +166,16 @@ pub mod tests {
             id: entity_id.into(),
             attributes: HashMap::new(),
         };
-        let result = Feature::should_rollout(100, &entity, "f1");
+        let result = FeatureSnapshot::should_rollout(100, &entity, "f1");
         assert!(result);
 
-        let result = Feature::should_rollout(0, &entity, "f1");
+        let result = FeatureSnapshot::should_rollout(0, &entity, "f1");
         assert!(!result);
 
-        let result = Feature::should_rollout(50, &entity, "f1");
+        let result = FeatureSnapshot::should_rollout(50, &entity, "f1");
         assert_eq!(result, partial_rollout_expectation);
 
-        let result = Feature::should_rollout(50, &entity, "f4");
+        let result = FeatureSnapshot::should_rollout(50, &entity, "f4");
         // We chose feature ID here so that we rollout exactly inverted to "f1"
         assert_eq!(result, !partial_rollout_expectation);
     }
@@ -181,7 +204,7 @@ pub mod tests {
             enabled: true,
             rollout_percentage: 50,
         };
-        let feature = Feature::new(inner_feature, HashMap::new());
+        let feature = FeatureSnapshot::new(inner_feature, HashMap::new());
 
         // One entity and feature combination which leads to no rollout:
         let entity = crate::tests::GenericEntity {
@@ -222,7 +245,7 @@ pub mod tests {
             enabled: false,
             rollout_percentage: 100,
         };
-        let feature = Feature::new(inner_feature, HashMap::new());
+        let feature = FeatureSnapshot::new(inner_feature, HashMap::new());
 
         let entity = crate::tests::TrivialEntity {};
         let value = feature.get_value(&entity).unwrap();
@@ -253,7 +276,7 @@ pub mod tests {
             enabled: true,
             rollout_percentage: 50,
         };
-        let feature = Feature::new(
+        let feature = FeatureSnapshot::new(
             inner_feature,
             HashMap::from([(
                 "some_segment_id".into(),
@@ -321,7 +344,7 @@ pub mod tests {
             enabled: true,
             rollout_percentage: 50,
         };
-        let feature = Feature::new(
+        let feature = FeatureSnapshot::new(
             inner_feature,
             HashMap::from([(
                 "some_segment_id".into(),
@@ -371,7 +394,7 @@ pub mod tests {
             enabled: true,
             rollout_percentage: 0,
         };
-        let feature = Feature::new(
+        let feature = FeatureSnapshot::new(
             inner_feature,
             HashMap::from([(
                 "some_segment_id".into(),
@@ -429,7 +452,7 @@ pub mod tests {
             enabled: true,
             rollout_percentage: 100,
         };
-        let feature = Feature::new(
+        let feature = FeatureSnapshot::new(
             inner_feature,
             HashMap::from([
                 (

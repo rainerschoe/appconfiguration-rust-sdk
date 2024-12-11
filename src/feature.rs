@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod client;
-pub mod entity;
-pub mod errors;
-pub mod models;
-mod segment_evaluation;
-mod feature;
+use crate::client::value::Value;
+use crate::errors::Result;
+use crate::Entity;
 
-pub use feature::Feature;
-pub use entity::{AttrValue, Entity};
+pub trait Feature {
+    fn get_id(&self) -> &str;
 
-#[cfg(test)]
-mod tests;
+    fn get_name(&self) -> Result<String>;
+
+    fn get_data_type(&self) -> Result<crate::models::ValueKind>;
+
+    fn is_enabled(&self) -> Result<bool>;
+
+    fn get_enabled_value(&self) -> Result<crate::models::ConfigValue>;
+
+    fn get_value(&self, entity: &impl Entity) -> Result<Value>;
+}
