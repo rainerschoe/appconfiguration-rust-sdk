@@ -176,7 +176,7 @@ pub mod tests {
             "some_segment_id_1".into(),
             Segment {
                 name: "".into(),
-                segment_id: "".into(),
+                segment_id: "some_segment_id_1".into(),
                 description: "".into(),
                 tags: None,
                 rules: vec![SegmentRule {
@@ -252,11 +252,6 @@ pub mod tests {
             panic!("Error type mismatch!");
         };
         assert_eq!(segment_id, "non_existing_segment_id");
-        // let msg = rule.unwrap_err().to_string();
-        // assert!(msg.contains("'a2'"));
-        // assert!(msg.contains("'0'"));
-        // assert!(msg.contains("'non_existing_segment_id'"));
-        // assert!(msg.contains("not found"));
     }
 
     // SCENARIO - evaluating an operator fails. Meaning, [for example] user has added a numeric value(int/float) in appconfig segment attribute, but in their application they pass the attribute with a boolean value.
@@ -269,13 +264,6 @@ pub mod tests {
         };
         let rule =
             find_applicable_segment_rule_for_entity(&segments, segment_rules.into_iter(), &entity);
-        // Error message should look something like this:
-        //  Failed to evaluate entity: Failed to evaluate entity 'a2' against targeting rule '0'.
-        //  Caused by: Failed to evaluate segment 'some_segment_id_1'
-        //  Caused by: Operation 'name' 'is' 'heinz' failed to evaluate.
-        //  Caused by: Entity attribute has unexpected type: Number.
-        // We are checking here that the parts are present to allow debugging of config by the user:
-
         let e = rule.unwrap_err();
         assert!(matches!(e, Error::EntityEvaluationError(_)));
         let Error::EntityEvaluationError(EntityEvaluationError(
@@ -284,7 +272,7 @@ pub mod tests {
         else {
             panic!("Error type mismatch!");
         };
-        assert_eq!(error.segment.name, "");
+        assert_eq!(error.segment_id, "some_segment_id_1");
         assert_eq!(error.segment_rule.attribute_name, "name");
         assert_eq!(error.value, "heinz");
     }
