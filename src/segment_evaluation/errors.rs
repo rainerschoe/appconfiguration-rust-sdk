@@ -28,7 +28,7 @@ pub(crate) enum SegmentEvaluationError {
 #[derive(Debug, Error)]
 #[error("Operation '{}' '{}' '{}' failed to evaluate: {}", segment_rule.attribute_name, segment_rule.operator,  value, source)]
 pub(crate) struct SegmentEvaluationErrorKind {
-    pub(crate) segment: Segment,
+    pub(crate) segment_id: String,
     pub(crate) segment_rule: SegmentRule,
     pub(crate) value: String,
     pub(crate) source: CheckOperatorErrorDetail,
@@ -38,7 +38,7 @@ impl From<(CheckOperatorErrorDetail, &Segment, &SegmentRule, &String)> for Segme
     fn from(value: (CheckOperatorErrorDetail, &Segment, &SegmentRule, &String)) -> Self {
         let (source, segment, segment_rule, value) = value;
         Self::SegmentEvaluationFailed(SegmentEvaluationErrorKind {
-            segment: segment.clone(),
+            segment_id: segment.segment_id.clone(),
             segment_rule: segment_rule.clone(),
             value: value.clone(),
             source,
