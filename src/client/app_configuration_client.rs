@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::client::cache::ConfigurationSnapshot;
-use crate::client::feature::FeatureSnapshot;
+use crate::client::feature_snapshot::FeatureSnapshot;
 pub use crate::client::feature_proxy::FeatureProxy;
 use crate::client::http;
 use crate::client::property::Property;

@@ -15,7 +15,7 @@
 mod app_configuration_client;
 
 pub(crate) mod cache;
-pub mod feature;
+pub mod feature_snapshot;
 pub(crate) mod feature_proxy;
 pub(crate) mod http;
 pub mod property;

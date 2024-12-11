@@ -19,7 +19,7 @@ use murmur3::murmur3_32;
 use crate::entity::Entity;
 use crate::Feature;
 
-use super::feature::FeatureSnapshot;
+use super::feature_snapshot::FeatureSnapshot;
 use super::AppConfigurationClient;
 
 pub struct FeatureProxy<'a> {
