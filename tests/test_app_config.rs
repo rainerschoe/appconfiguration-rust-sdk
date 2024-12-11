@@ -18,6 +18,7 @@ use rstest::*;
 use appconfiguration_rust_sdk::client::AppConfigurationClient;
 use appconfiguration_rust_sdk::models::ValueKind;
 use std::env;
+use appconfiguration_rust_sdk::Feature;
 
 #[fixture]
 fn setup_client() -> AppConfigurationClient {
@@ -46,9 +47,9 @@ fn test_get_a_specific_feature(setup_client: AppConfigurationClient) {
         .get_feature_proxy("test-feature-flag-1")
         .unwrap();
 
-    let name = specific_feature.get_name();
-    let data_type = specific_feature.get_data_type();
-    let is_enabled = specific_feature.is_enabled();
+    let name = specific_feature.get_name().unwrap();
+    let data_type = specific_feature.get_data_type().unwrap();
+    let is_enabled = specific_feature.is_enabled().unwrap();
 
     assert_eq!(name, "test feature flag 1".to_string());
     assert_eq!(data_type, ValueKind::Boolean);

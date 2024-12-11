@@ -14,7 +14,7 @@
 
 use std::{collections::HashMap, env, thread, time::Duration};
 
-use appconfiguration_rust_sdk::{client::AppConfigurationClient, AttrValue, Entity};
+use appconfiguration_rust_sdk::{client::AppConfigurationClient, AttrValue, Entity, Feature};
 use dotenvy::dotenv;
 use std::error::Error;
 
@@ -69,13 +69,13 @@ fn main() -> Result<()> {
 
         match client.get_feature_proxy(&feature_id) {
             Ok(feature) => {
-                println!("Feature name: {}", feature.get_name());
+                println!("Feature name: {}", feature.get_name()?);
                 println!("Feature id: {}", feature.get_id());
-                println!("Feature data type: {}", feature.get_data_type());
-                println!("Is feature enabled: {}", feature.is_enabled());
+                println!("Feature data type: {}", feature.get_data_type()?);
+                println!("Is feature enabled: {}", feature.is_enabled()?);
                 println!(
-                    "Feature evaluated value is: {}",
-                    feature.get_current_value(&entity)
+                    "Feature evaluated value is: {:?}",
+                    feature.get_value(&entity)?
                 );
             }
             Err(error) => {

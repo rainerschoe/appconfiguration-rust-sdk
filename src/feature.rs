@@ -12,16 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod app_configuration_client;
+use crate::client::value::Value;
+use crate::errors::Result;
+use crate::Entity;
 
-pub(crate) mod cache;
-pub mod feature_snapshot;
-pub(crate) mod feature_proxy;
-pub(crate) mod http;
-pub mod property;
-pub(crate) mod property_proxy;
-pub mod value;
+pub trait Feature {
+    fn get_id(&self) -> &str;
 
-pub use app_configuration_client::AppConfigurationClient;
+    fn get_name(&self) -> Result<String>;
 
-pub const REGION_US_SOUTH: &str = "us-south";
+    fn get_data_type(&self) -> Result<crate::models::ValueKind>;
+
+    fn is_enabled(&self) -> Result<bool>;
+
+    fn get_enabled_value(&self) -> Result<crate::models::ConfigValue>;
+
+    fn get_value(&self, entity: &impl Entity) -> Result<Value>;
+}

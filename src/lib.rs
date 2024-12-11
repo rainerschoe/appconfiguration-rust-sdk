@@ -17,7 +17,9 @@ pub mod entity;
 pub mod errors;
 pub mod models;
 mod segment_evaluation;
+mod feature;
 
+pub use feature::Feature;
 pub use entity::{AttrValue, Entity};
 
 #[cfg(test)]
