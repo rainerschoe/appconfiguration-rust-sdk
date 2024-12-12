@@ -2,7 +2,7 @@ use std::sync::PoisonError;
 
 use thiserror::Error;
 
-use crate::segment_evaluation::SegmentEvaluationError;
+use crate::segment_evaluation::errors::SegmentEvaluationError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

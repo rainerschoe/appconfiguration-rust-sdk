@@ -22,9 +22,10 @@ mod test_using_example_data;
 
 use crate::client::cache::ConfigurationSnapshot;
 use crate::client::AppConfigurationClient;
+use crate::entity::AttrValue;
 use crate::models::tests::example_configuration_enterprise;
 use crate::models::Configuration;
-use crate::{AttrValue, Entity};
+use crate::Entity;
 use rstest::fixture;
 use std::sync::{Arc, Mutex};
 

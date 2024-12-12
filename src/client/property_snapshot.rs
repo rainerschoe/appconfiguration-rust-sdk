@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::client::value::{NumericValue, Value};
+use crate::value::{NumericValue, Value};
 use crate::entity::Entity;
 use crate::Property;
 use std::collections::HashMap;
@@ -63,20 +63,8 @@ impl PropertySnapshot {
 }
 
 impl Property for PropertySnapshot {
-    fn get_id(&self) -> &str {
-        &self.property.property_id
-    }
-
     fn get_name(&self) -> Result<String> {
         Ok(self.property.name.clone())
-    }
-
-    fn get_data_type(&self) -> Result<crate::models::ValueKind> {
-        Ok(self.property.kind)
-    }
-
-    fn get_value_default(&self) -> Result<crate::models::ConfigValue> {
-        Ok(self.property.value.clone())
     }
 
     fn get_value(&self, entity: &impl Entity) -> Result<Value> {
@@ -104,14 +92,11 @@ impl Property for PropertySnapshot {
     }
 }
 
-
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::{
-        models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule, ValueKind},
-        AttrValue,
-    };
+    use crate::entity::AttrValue;
+    use crate::models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule, ValueKind};
 
     #[test]
     fn test_get_value_segment_with_default_value() {
