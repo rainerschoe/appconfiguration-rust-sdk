@@ -104,6 +104,7 @@ pub mod tests {
     use super::*;
     use crate::models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule, ValueKind};
     use crate::Value;
+    use serde_json::json;
 
     #[test]
     fn test_get_value_segment_with_default_value() {
@@ -135,7 +136,7 @@ pub mod tests {
                     rules: vec![SegmentRule {
                         attribute_name: "name".into(),
                         operator: "is".into(),
-                        values: vec!["heinz".into()],
+                        values: vec![ConfigValue(json!("heinz"))],
                     }],
                 },
             )]),
@@ -191,7 +192,7 @@ pub mod tests {
                         rules: vec![SegmentRule {
                             attribute_name: "name".into(),
                             operator: "is".into(),
-                            values: vec!["heinz".into()],
+                            values: vec![ConfigValue(json!("heinz"))],
                         }],
                     },
                 ),
@@ -205,7 +206,7 @@ pub mod tests {
                         rules: vec![SegmentRule {
                             attribute_name: "name".into(),
                             operator: "is".into(),
-                            values: vec!["heinz".into()],
+                            values: vec![ConfigValue(json!("heinz"))],
                         }],
                     },
                 ),

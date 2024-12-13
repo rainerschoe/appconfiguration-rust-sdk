@@ -14,7 +14,9 @@
 
 use std::fmt::Display;
 
+use crate::Value;
 use serde::Deserialize;
+use thiserror::Error;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct Configuration {
@@ -129,7 +131,7 @@ impl Display for ConfigValue {
 pub(crate) struct SegmentRule {
     pub attribute_name: String,
     pub operator: String,
-    pub values: Vec<String>,
+    pub values: Vec<ConfigValue>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -143,6 +145,27 @@ pub(crate) struct TargetingRule {
 #[derive(Debug, Deserialize, Clone)]
 pub(crate) struct Segments {
     pub segments: Vec<String>,
+}
+
+#[derive(Debug, Error)]
+pub(crate) enum ConfigValueConversionError {
+    #[error("Given config value type is not supported.")]
+    Unsupported,
+}
+
+impl TryInto<Value> for &ConfigValue {
+    type Error = ConfigValueConversionError;
+
+    fn try_into(self) -> Result<Value, Self::Error> {
+        match self.0 {
+            serde_json::Value::String(ref value) => Ok(Value::String(value.clone())),
+            serde_json::Value::Bool(ref value) => Ok(Value::Boolean(value.clone())),
+            serde_json::Value::Number(ref value) => {
+                Ok(Value::Numeric(crate::value::NumericValue(value.clone())))
+            }
+            _ => Err(ConfigValueConversionError::Unsupported),
+        }
+    }
 }
 
 #[cfg(test)]

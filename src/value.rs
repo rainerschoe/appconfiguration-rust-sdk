@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct NumericValue(pub(crate) serde_json::Number);
@@ -72,6 +72,16 @@ pub enum Value {
     Numeric(NumericValue),
     String(String),
     Boolean(bool),
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Numeric(value) => write!(f, "{}", value.0),
+            Value::String(value) => write!(f, "\"{value}\""),
+            Value::Boolean(value) => write!(f, "{value}"),
+        }
+    }
 }
 
 impl FromStr for NumericValue {

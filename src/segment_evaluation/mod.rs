@@ -97,10 +97,16 @@ fn belong_to_segment(
                 let candidate = rule
                     .values
                     .iter()
-                    .find_map(|value| match check_operator(attr_value, operator, value) {
-                        Ok(true) => Some(Ok::<_, SegmentEvaluationError>(())),
-                        Ok(false) => None,
-                        Err(e) => Some(Err((e, segment, rule, value).into())),
+                    .find_map(|value| {
+                        //let value: Value = value.try_into().unwrap();
+                        match value.try_into() {
+                            Err(e) => Some(Err((e, segment, rule, value).into())),
+                            Ok(value) => match check_operator(attr_value, operator, &value) {
+                                Ok(true) => Some(Ok::<_, SegmentEvaluationError>(())),
+                                Ok(false) => None,
+                                Err(e) => Some(Err((e, segment, rule, &value).into())),
+                            },
+                        }
                     })
                     .transpose()?;
                 // check if the candidate is good, or if the operator failed:
@@ -118,43 +124,51 @@ fn belong_to_segment(
 fn check_operator(
     attribute_value: &Value,
     operator: &str,
-    reference_value: &str,
+    reference_value: &Value,
 ) -> std::result::Result<bool, CheckOperatorErrorDetail> {
     match operator {
-        "is" => match attribute_value {
-            Value::String(data) => Ok(*data == reference_value),
-            Value::Boolean(data) => Ok(*data == reference_value.parse::<bool>()?),
-            Value::Numeric(data) => Ok(*data == reference_value.parse()?),
-        },
-        "contains" => match attribute_value {
-            Value::String(data) => Ok(data.contains(reference_value)),
+        "is" => {
+            if std::mem::discriminant(attribute_value) != std::mem::discriminant(reference_value) {
+                Err(CheckOperatorErrorDetail::OperandsHaveDifferentTypes)
+            } else {
+                Ok(attribute_value == reference_value)
+            }
+        }
+        "contains" => match (attribute_value, reference_value) {
+            (Value::String(data), Value::String(reference_data)) => {
+                Ok(data.contains(reference_data))
+            }
             _ => Err(CheckOperatorErrorDetail::StringExpected),
         },
-        "startsWith" => match attribute_value {
-            Value::String(data) => Ok(data.starts_with(reference_value)),
+        "startsWith" => match (attribute_value, reference_value) {
+            (Value::String(data), Value::String(reference_data)) => {
+                Ok(data.starts_with(reference_data))
+            }
             _ => Err(CheckOperatorErrorDetail::StringExpected),
         },
-        "endsWith" => match attribute_value {
-            Value::String(data) => Ok(data.ends_with(reference_value)),
+        "endsWith" => match (attribute_value, reference_value) {
+            (Value::String(data), Value::String(reference_data)) => {
+                Ok(data.ends_with(reference_data))
+            }
             _ => Err(CheckOperatorErrorDetail::StringExpected),
         },
-        "greaterThan" => match attribute_value {
+        "greaterThan" => match (attribute_value, reference_value) {
             // TODO: Go implementation also compares strings (by parsing them as floats). Do we need this?
             //       https://github.com/IBM/appconfiguration-go-sdk/blob/master/lib/internal/models/Rule.go#L82
             // TODO: we could have numbers not representable as f64, maybe we should try to parse it to i64 and u64 too?
-            Value::Numeric(data) => Ok(*data > reference_value.parse()?),
+            (Value::Numeric(data), Value::Numeric(reference_data)) => Ok(data > reference_data),
             _ => Err(CheckOperatorErrorDetail::EntityAttrNotANumber),
         },
-        "lesserThan" => match attribute_value {
-            Value::Numeric(data) => Ok(*data < reference_value.parse()?),
+        "lesserThan" => match (attribute_value, reference_value) {
+            (Value::Numeric(data), Value::Numeric(reference_data)) => Ok(data < reference_data),
             _ => Err(CheckOperatorErrorDetail::EntityAttrNotANumber),
         },
-        "greaterThanEquals" => match attribute_value {
-            Value::Numeric(data) => Ok(*data >= reference_value.parse()?),
+        "greaterThanEquals" => match (attribute_value, reference_value) {
+            (Value::Numeric(data), Value::Numeric(reference_data)) => Ok(data >= reference_data),
             _ => Err(CheckOperatorErrorDetail::EntityAttrNotANumber),
         },
-        "lesserThanEquals" => match attribute_value {
-            Value::Numeric(data) => Ok(*data <= reference_value.parse()?),
+        "lesserThanEquals" => match (attribute_value, reference_value) {
+            (Value::Numeric(data), Value::Numeric(reference_data)) => Ok(data <= reference_data),
             _ => Err(CheckOperatorErrorDetail::EntityAttrNotANumber),
         },
         _ => Err(CheckOperatorErrorDetail::OperatorNotImplemented),
@@ -180,7 +194,7 @@ pub mod tests {
                 rules: vec![SegmentRule {
                     attribute_name: "name".into(),
                     operator: "is".into(),
-                    values: vec!["heinz".into()],
+                    values: vec![ConfigValue(serde_json::json!("heinz"))],
                 }],
             },
         )])
@@ -272,6 +286,6 @@ pub mod tests {
         };
         assert_eq!(error.segment_id, "some_segment_id_1");
         assert_eq!(error.segment_rule.attribute_name, "name");
-        assert_eq!(error.value, "heinz");
+        assert_eq!(error.value, Value::String("heinz".into()));
     }
 }
