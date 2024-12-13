@@ -24,7 +24,6 @@ use std::collections::{HashMap, HashSet};
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::Message;
 use tungstenite::WebSocket;
