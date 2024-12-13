@@ -31,6 +31,9 @@ pub enum Error {
     #[error(transparent)]
     TungsteniteError(#[from] tungstenite::Error),
 
+    #[error(transparent)]
+    SerdeError(#[from] serde_json::Error),
+
     #[error("Protocol error. Unexpected data received from server")]
     ProtocolError(String),
 

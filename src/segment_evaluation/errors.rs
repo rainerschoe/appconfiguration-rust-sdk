@@ -55,7 +55,7 @@ pub(crate) enum CheckOperatorErrorDetail {
     BooleanExpected(#[from] std::str::ParseBoolError),
 
     #[error("Entity attribute has unexpected type: Number.")]
-    NumberExpected(#[from] std::num::ParseFloatError),
+    NumberExpected(#[from] serde_json::Error),
 
     #[error("Entity attribute is not a number.")]
     EntityAttrNotANumber,

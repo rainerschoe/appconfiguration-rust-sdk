@@ -13,11 +13,11 @@
 // limitations under the License.
 
 use crate::client::cache::ConfigurationSnapshot;
-use crate::client::feature_snapshot::FeatureSnapshot;
 pub use crate::client::feature_proxy::FeatureProxy;
+use crate::client::feature_snapshot::FeatureSnapshot;
 use crate::client::http;
-use crate::client::property_snapshot::PropertySnapshot;
 pub use crate::client::property_proxy::PropertyProxy;
+use crate::client::property_snapshot::PropertySnapshot;
 use crate::errors::{ConfigurationAccessError, Error, Result};
 use crate::models::Segment;
 use std::collections::{HashMap, HashSet};

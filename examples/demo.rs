@@ -14,9 +14,7 @@
 
 use std::{collections::HashMap, env, thread, time::Duration};
 
-use appconfiguration_rust_sdk::{
-    AppConfigurationClient, AttrValue, Entity, Feature, Property, Value,
-};
+use appconfiguration_rust_sdk::{AppConfigurationClient, Entity, Feature, Property, Value};
 use dotenvy::dotenv;
 use std::error::Error;
 
@@ -32,10 +30,13 @@ impl Entity for CustomerEntity {
         self.id.clone()
     }
 
-    fn get_attributes(&self) -> HashMap<String, AttrValue> {
+    fn get_attributes(&self) -> HashMap<String, Value> {
         HashMap::from_iter(vec![
-            ("city".to_string(), AttrValue::String(self.city.clone())),
-            ("radius".to_string(), AttrValue::Numeric(self.radius as f64)),
+            ("city".to_string(), Value::String(self.city.clone())),
+            (
+                "radius".to_string(),
+                (self.radius as f64).try_into().unwrap(),
+            ), // FIXME: unwrap here...
         ])
     }
 }

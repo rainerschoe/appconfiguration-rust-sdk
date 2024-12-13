@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::value::{NumericValue, Value};
 use crate::entity::Entity;
+use crate::value::{NumericValue, Value};
 use crate::Feature;
 use std::collections::HashMap;
 
@@ -114,9 +114,16 @@ impl Feature for FeatureSnapshot {
         let model_value = self.evaluate_feature_for_entity(entity)?;
 
         let value = match self.feature.kind {
-            crate::models::ValueKind::Numeric => {
-                Value::Numeric(NumericValue(model_value.0.clone()))
-            }
+            crate::models::ValueKind::Numeric => Value::Numeric(NumericValue(
+                model_value
+                    .0
+                    .as_number()
+                    .ok_or(Error::ProtocolError(
+                        format!("Feature specifies numeric type, but it's value is not numeric.")
+                            .into(),
+                    ))?
+                    .clone(),
+            )),
             crate::models::ValueKind::Boolean => Value::Boolean(
                 model_value
                     .0
@@ -139,8 +146,8 @@ impl Feature for FeatureSnapshot {
 pub mod tests {
 
     use super::*;
-    use crate::entity::AttrValue;
     use crate::models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule, ValueKind};
+    use crate::Value;
     use rstest::rstest;
 
     #[rstest]
@@ -171,12 +178,12 @@ pub mod tests {
     // no attrs, no segment rules
     #[case([].into(), [].into())]
     // attrs but no segment rules
-    #[case([].into(), [("key".into(), AttrValue::String("value".into()))].into())]
+    #[case([].into(), [("key".into(), Value::String("value".into()))].into())]
     // no attrs but segment rules
     #[case([TargetingRule{rules: Vec::new(), value: ConfigValue(serde_json::json!("")), order: 0, rollout_percentage: None}].into(), [].into())]
     fn test_get_value_no_match_50_50_rollout(
         #[case] segment_rules: Vec<TargetingRule>,
-        #[case] entity_attributes: HashMap<String, AttrValue>,
+        #[case] entity_attributes: HashMap<String, Value>,
     ) {
         let inner_feature = crate::models::Feature {
             name: "F1".to_string(),
@@ -282,7 +289,7 @@ pub mod tests {
         // matching the segment + rollout allowed
         let entity = crate::tests::GenericEntity {
             id: "a2".into(),
-            attributes: HashMap::from([("name".into(), AttrValue::from("heinz".to_string()))]),
+            attributes: HashMap::from([("name".into(), Value::from("heinz".to_string()))]),
         };
 
         let value = feature.get_value(&entity).unwrap();
@@ -291,7 +298,7 @@ pub mod tests {
         // matching the segment + rollout disallowed
         let entity = crate::tests::GenericEntity {
             id: "a1".into(),
-            attributes: HashMap::from([("name".into(), AttrValue::from("heinz".to_string()))]),
+            attributes: HashMap::from([("name".into(), Value::from("heinz".to_string()))]),
         };
 
         let value = feature.get_value(&entity).unwrap();
@@ -300,7 +307,7 @@ pub mod tests {
         // not matching the segment + rollout allowed
         let entity = crate::tests::GenericEntity {
             id: "a2".into(),
-            attributes: HashMap::from([("name".into(), AttrValue::from("heinzz".to_string()))]),
+            attributes: HashMap::from([("name".into(), Value::from("heinzz".to_string()))]),
         };
 
         let value = feature.get_value(&entity).unwrap();
@@ -350,7 +357,7 @@ pub mod tests {
         // matching the segment + rollout allowed
         let entity = crate::tests::GenericEntity {
             id: "a2".into(),
-            attributes: HashMap::from([("name".into(), AttrValue::from("heinz".to_string()))]),
+            attributes: HashMap::from([("name".into(), Value::from("heinz".to_string()))]),
         };
 
         let value = feature.get_value(&entity).unwrap();
@@ -400,7 +407,7 @@ pub mod tests {
         // matching the segment + rollout allowed
         let entity = crate::tests::GenericEntity {
             id: "a2".into(),
-            attributes: HashMap::from([("name".into(), AttrValue::from("heinz".to_string()))]),
+            attributes: HashMap::from([("name".into(), Value::from("heinz".to_string()))]),
         };
 
         let value = feature.get_value(&entity).unwrap();
@@ -474,7 +481,7 @@ pub mod tests {
         // Both segment rules match. Expect the one with smaller order to be used:
         let entity = crate::tests::GenericEntity {
             id: "a2".into(),
-            attributes: HashMap::from([("name".into(), AttrValue::from("heinz".to_string()))]),
+            attributes: HashMap::from([("name".into(), Value::from("heinz".to_string()))]),
         };
         let value = feature.get_value(&entity).unwrap();
         assert!(matches!(value, Value::Numeric(ref v) if v.as_i64().unwrap() == -49));

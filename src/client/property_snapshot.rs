@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::value::{NumericValue, Value};
 use crate::entity::Entity;
+use crate::value::{NumericValue, Value};
 use crate::Property;
 use std::collections::HashMap;
 
@@ -71,9 +71,16 @@ impl Property for PropertySnapshot {
         let model_value = self.evaluate_feature_for_entity(entity)?;
 
         let value = match self.property.kind {
-            crate::models::ValueKind::Numeric => {
-                Value::Numeric(NumericValue(model_value.0.clone()))
-            }
+            crate::models::ValueKind::Numeric => Value::Numeric(NumericValue(
+                model_value
+                    .0
+                    .as_number()
+                    .ok_or(Error::ProtocolError(
+                        format!("Feature specifies numeric type, but it's value is not numeric.")
+                            .into(),
+                    ))?
+                    .clone(),
+            )),
             crate::models::ValueKind::Boolean => Value::Boolean(
                 model_value
                     .0
@@ -95,8 +102,8 @@ impl Property for PropertySnapshot {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::entity::AttrValue;
     use crate::models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule, ValueKind};
+    use crate::Value;
 
     #[test]
     fn test_get_value_segment_with_default_value() {
@@ -137,7 +144,7 @@ pub mod tests {
         // Both segment rules match. Expect the one with smaller order to be used:
         let entity = crate::tests::GenericEntity {
             id: "a2".into(),
-            attributes: HashMap::from([("name".into(), AttrValue::from("heinz".to_string()))]),
+            attributes: HashMap::from([("name".into(), Value::from("heinz".to_string()))]),
         };
         let value = property.get_value(&entity).unwrap();
         assert!(matches!(value, Value::Numeric(ref v) if v.as_i64().unwrap() == -42));
@@ -208,7 +215,7 @@ pub mod tests {
         // Both segment rules match. Expect the one with smaller order to be used:
         let entity = crate::tests::GenericEntity {
             id: "a2".into(),
-            attributes: HashMap::from([("name".into(), AttrValue::from("heinz".to_string()))]),
+            attributes: HashMap::from([("name".into(), Value::from("heinz".to_string()))]),
         };
         let value = property.get_value(&entity).unwrap();
         assert!(matches!(value, Value::Numeric(ref v) if v.as_i64().unwrap() == -49));

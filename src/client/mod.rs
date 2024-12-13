@@ -15,12 +15,11 @@
 mod app_configuration_client;
 
 pub(crate) mod cache;
-pub(crate) mod feature_snapshot;
 pub(crate) mod feature_proxy;
+pub(crate) mod feature_snapshot;
 pub(crate) mod http;
-pub(crate) mod property_snapshot;
 pub(crate) mod property_proxy;
-
+pub(crate) mod property_snapshot;
 
 pub use app_configuration_client::AppConfigurationClient;
 

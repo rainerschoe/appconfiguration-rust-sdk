@@ -19,8 +19,8 @@ use crate::client::AppConfigurationClient;
 use rstest::*;
 
 use super::client_enterprise;
-use crate::models::tests::configuration_feature1_enabled;
 use crate::feature::Feature;
+use crate::models::tests::configuration_feature1_enabled;
 
 #[rstest]
 fn test_get_feature_persistence(

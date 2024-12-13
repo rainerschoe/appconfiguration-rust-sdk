@@ -15,9 +15,7 @@
 use dotenvy::dotenv;
 use rstest::*;
 
-use appconfiguration_rust_sdk::{
-    AppConfigurationClient, AttrValue, Entity, Feature, Property, Value,
-};
+use appconfiguration_rust_sdk::{AppConfigurationClient, Entity, Feature, Property, Value};
 use std::collections::HashMap;
 use std::env;
 
@@ -28,7 +26,7 @@ impl Entity for TrivialEntity {
         "TrivialId".into()
     }
 
-    fn get_attributes(&self) -> HashMap<String, AttrValue> {
+    fn get_attributes(&self) -> HashMap<String, Value> {
         HashMap::new()
     }
 }
