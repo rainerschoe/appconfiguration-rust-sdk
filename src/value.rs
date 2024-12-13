@@ -44,22 +44,22 @@ impl PartialOrd for NumericValue {
                 (_, _, Some(b)) => (a as f64).partial_cmp(&b),
                 _ => None,
             },
-            (None, Some(a), None) => match (other.0.as_i64(), other.0.as_u64(), other.0.as_f64()) {
-                (None, Some(b), None) => Some(a.cmp(&b)),
-                (Some(b), None, None) => {
+            (_, Some(a), _) => match (other.0.as_i64(), other.0.as_u64(), other.0.as_f64()) {
+                (_, Some(b), _) => Some(a.cmp(&b)),
+                (Some(b), _, _) => {
                     if b < 0 {
                         Some(std::cmp::Ordering::Greater)
                     } else {
                         a.partial_cmp(&(b as u64))
                     }
                 }
-                (None, None, Some(b)) => (a as f64).partial_cmp(&b),
+                (_, _, Some(b)) => (a as f64).partial_cmp(&b),
                 _ => None,
             },
-            (None, None, Some(a)) => match (other.0.as_i64(), other.0.as_u64(), other.0.as_f64()) {
-                (None, None, Some(b)) => a.partial_cmp(&b),
-                (Some(b), None, None) => a.partial_cmp(&(b as f64)),
-                (None, Some(b), None) => a.partial_cmp(&(b as f64)),
+            (_, _, Some(a)) => match (other.0.as_i64(), other.0.as_u64(), other.0.as_f64()) {
+                (_, _, Some(b)) => a.partial_cmp(&b),
+                (Some(b), _, _) => a.partial_cmp(&(b as f64)),
+                (_, Some(b), _) => a.partial_cmp(&(b as f64)),
                 _ => None,
             },
             _ => None, // not representable using rust types
@@ -129,6 +129,7 @@ impl From<bool> for Value {
 pub mod tests {
 
     use super::*;
+    use rstest::*;
 
     #[test]
     fn test_numeric() {
@@ -151,5 +152,29 @@ pub mod tests {
         assert!(matches!(value, Value::Numeric(ref v) if v.as_f64().unwrap() == -42f64));
         assert!(matches!(value, Value::Numeric(ref v) if v.as_i64().unwrap() == -42i64));
         assert!(matches!(value, Value::Numeric(ref v) if v.as_u64().is_none()));
+    }
+
+    #[rstest]
+    #[case("5.5", "5.4")]
+    #[case("5.5", "4")]
+    #[case("5.5", "-4")]
+    #[case("5", "4.9")]
+    #[case("5", "4")]
+    #[case("5", "-4")]
+    #[case("-5", "-5.1")]
+    #[case("-5", "-6")]
+    fn test_numeric_order(#[case] left: &str, #[case] right: &str) {
+        assert!(
+            left.parse::<NumericValue>().unwrap() > right.parse::<NumericValue>().unwrap(),
+            "{} > {}",
+            left,
+            right
+        );
+        assert!(
+            right.parse::<NumericValue>().unwrap() < left.parse::<NumericValue>().unwrap(),
+            "{} < {}",
+            right,
+            left
+        );
     }
 }
