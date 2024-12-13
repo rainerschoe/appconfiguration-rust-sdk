@@ -149,6 +149,7 @@ pub mod tests {
     use crate::models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule, ValueKind};
     use crate::Value;
     use rstest::rstest;
+    use serde_json::json;
 
     #[rstest]
     #[case("a1", false)]
@@ -280,7 +281,7 @@ pub mod tests {
                     rules: vec![SegmentRule {
                         attribute_name: "name".into(),
                         operator: "is".into(),
-                        values: vec!["heinz".into()],
+                        values: vec![ConfigValue(json!("heinz"))],
                     }],
                 },
             )]),
@@ -348,7 +349,7 @@ pub mod tests {
                     rules: vec![SegmentRule {
                         attribute_name: "name".into(),
                         operator: "is".into(),
-                        values: vec!["heinz".into()],
+                        values: vec![ConfigValue(json!("heinz"))],
                     }],
                 },
             )]),
@@ -398,7 +399,7 @@ pub mod tests {
                     rules: vec![SegmentRule {
                         attribute_name: "name".into(),
                         operator: "is".into(),
-                        values: vec!["heinz".into()],
+                        values: vec![ConfigValue(json!("heinz"))],
                     }],
                 },
             )]),
@@ -457,7 +458,7 @@ pub mod tests {
                         rules: vec![SegmentRule {
                             attribute_name: "name".into(),
                             operator: "is".into(),
-                            values: vec!["heinz".into()],
+                            values: vec![ConfigValue(json!("heinz"))],
                         }],
                     },
                 ),
@@ -471,7 +472,7 @@ pub mod tests {
                         rules: vec![SegmentRule {
                             attribute_name: "name".into(),
                             operator: "is".into(),
-                            values: vec!["heinz".into()],
+                            values: vec![ConfigValue(json!("heinz"))],
                         }],
                     },
                 ),

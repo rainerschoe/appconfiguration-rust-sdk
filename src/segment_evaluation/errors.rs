@@ -14,12 +14,22 @@
 
 use thiserror::Error;
 
-use crate::models::{Segment, SegmentRule};
+use crate::models::ConfigValue;
+use crate::models::{ConfigValueConversionError, Segment, SegmentRule};
+use crate::Value;
 
 #[derive(Debug, Error)]
 pub(crate) enum SegmentEvaluationError {
     #[error(transparent)]
     SegmentEvaluationFailed(#[from] SegmentEvaluationErrorKind),
+
+    #[error("An invalid value was encountered during rule evaluation")]
+    InvalidValue {
+        segment_id: String,
+        segment_rule: SegmentRule,
+        value: ConfigValue,
+        source: ConfigValueConversionError,
+    },
 
     #[error("Segment ID '{0}' not found")]
     SegmentIdNotFound(String),
@@ -30,12 +40,12 @@ pub(crate) enum SegmentEvaluationError {
 pub(crate) struct SegmentEvaluationErrorKind {
     pub(crate) segment_id: String,
     pub(crate) segment_rule: SegmentRule,
-    pub(crate) value: String,
+    pub(crate) value: Value,
     pub(crate) source: CheckOperatorErrorDetail,
 }
 
-impl From<(CheckOperatorErrorDetail, &Segment, &SegmentRule, &String)> for SegmentEvaluationError {
-    fn from(value: (CheckOperatorErrorDetail, &Segment, &SegmentRule, &String)) -> Self {
+impl From<(CheckOperatorErrorDetail, &Segment, &SegmentRule, &Value)> for SegmentEvaluationError {
+    fn from(value: (CheckOperatorErrorDetail, &Segment, &SegmentRule, &Value)) -> Self {
         let (source, segment, segment_rule, value) = value;
         Self::SegmentEvaluationFailed(SegmentEvaluationErrorKind {
             segment_id: segment.segment_id.clone(),
@@ -43,6 +53,38 @@ impl From<(CheckOperatorErrorDetail, &Segment, &SegmentRule, &String)> for Segme
             value: value.clone(),
             source,
         })
+    }
+}
+
+impl
+    From<(
+        ConfigValueConversionError,
+        &Segment,
+        &SegmentRule,
+        &ConfigValue,
+    )> for SegmentEvaluationError
+{
+    fn from(
+        value: (
+            ConfigValueConversionError,
+            &Segment,
+            &SegmentRule,
+            &ConfigValue,
+        ),
+    ) -> Self {
+        let (source, segment, segment_rule, value) = value;
+        Self::InvalidValue {
+            segment_id: segment.segment_id.clone(),
+            segment_rule: segment_rule.clone(),
+            value: value.clone(),
+            source,
+        }
+    }
+}
+
+impl From<crate::models::ConfigValueConversionError> for SegmentEvaluationError {
+    fn from(value: crate::models::ConfigValueConversionError) -> Self {
+        todo!()
     }
 }
 
@@ -62,4 +104,7 @@ pub(crate) enum CheckOperatorErrorDetail {
 
     #[error("Operator not implemented.")]
     OperatorNotImplemented,
+
+    #[error("Operands have different types.")]
+    OperandsHaveDifferentTypes,
 }
