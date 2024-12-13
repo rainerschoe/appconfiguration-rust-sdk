@@ -82,14 +82,6 @@ impl FromStr for NumericValue {
     }
 }
 
-impl FromStr for Value {
-    type Err = crate::Error;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        Ok(Self::Numeric(NumericValue(value.parse()?)))
-    }
-}
-
 impl TryFrom<f64> for Value {
     type Error = crate::Error;
 
