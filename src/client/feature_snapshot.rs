@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::client::value::{NumericValue, Value};
+use crate::value::{NumericValue, Value};
 use crate::entity::Entity;
 use crate::Feature;
 use std::collections::HashMap;
@@ -102,24 +102,12 @@ impl FeatureSnapshot {
 }
 
 impl Feature for FeatureSnapshot {
-    fn get_id(&self) -> &str {
-        &self.feature.feature_id
-    }
-
     fn get_name(&self) -> Result<String> {
         Ok(self.feature.name.clone())
     }
 
-    fn get_data_type(&self) -> Result<crate::models::ValueKind> {
-        Ok(self.feature.kind)
-    }
-
     fn is_enabled(&self) -> Result<bool> {
         Ok(self.feature.enabled)
-    }
-
-    fn get_enabled_value(&self) -> Result<crate::models::ConfigValue> {
-        Ok(self.feature.enabled_value.clone())
     }
 
     fn get_value(&self, entity: &impl Entity) -> Result<Value> {
@@ -151,11 +139,8 @@ impl Feature for FeatureSnapshot {
 pub mod tests {
 
     use super::*;
-    use crate::{
-        entity,
-        models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule, ValueKind},
-        AttrValue,
-    };
+    use crate::entity::AttrValue;
+    use crate::models::{ConfigValue, Segment, SegmentRule, Segments, TargetingRule, ValueKind};
     use rstest::rstest;
 
     #[rstest]

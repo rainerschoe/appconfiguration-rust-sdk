@@ -14,10 +14,10 @@
 
 use crate::Property;
 
-use crate::entity::Entity;
-
 use super::property_snapshot::PropertySnapshot;
 use super::AppConfigurationClient;
+use crate::value::Value;
+use crate::Entity;
 
 pub struct PropertyProxy<'a> {
     client: &'a AppConfigurationClient,
@@ -38,25 +38,11 @@ impl<'a> PropertyProxy<'a> {
 }
 
 impl<'a> Property for PropertyProxy<'a> {
-    fn get_id(&self) -> &str {
-        &self.property_id
-    }
-
     fn get_name(&self) -> crate::errors::Result<String> {
         self.client.get_property(&self.property_id)?.get_name()
     }
 
-    fn get_data_type(&self) -> crate::errors::Result<crate::models::ValueKind> {
-        self.client.get_property(&self.property_id)?.get_data_type()
-    }
-
-    fn get_value_default(&self) -> crate::errors::Result<crate::models::ConfigValue> {
-        self.client
-            .get_property(&self.property_id)?
-            .get_value_default()
-    }
-
-    fn get_value(&self, entity: &impl Entity) -> crate::errors::Result<super::value::Value> {
+    fn get_value(&self, entity: &impl Entity) -> crate::errors::Result<Value> {
         self.client
             .get_property(&self.property_id)?
             .get_value(entity)

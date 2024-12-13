@@ -15,10 +15,23 @@
 use dotenvy::dotenv;
 use rstest::*;
 
-use appconfiguration_rust_sdk::client::AppConfigurationClient;
-use appconfiguration_rust_sdk::models::ValueKind;
+use appconfiguration_rust_sdk::{
+    AppConfigurationClient, AttrValue, Entity, Feature, Property, Value,
+};
+use std::collections::HashMap;
 use std::env;
-use appconfiguration_rust_sdk::{Feature, Property};
+
+struct TrivialEntity;
+
+impl Entity for TrivialEntity {
+    fn get_id(&self) -> String {
+        "TrivialId".into()
+    }
+
+    fn get_attributes(&self) -> HashMap<String, AttrValue> {
+        HashMap::new()
+    }
+}
 
 #[fixture]
 fn setup_client() -> AppConfigurationClient {
@@ -48,12 +61,12 @@ fn test_get_a_specific_feature(setup_client: AppConfigurationClient) {
         .unwrap();
 
     let name = specific_feature.get_name().unwrap();
-    let data_type = specific_feature.get_data_type().unwrap();
+    let value = specific_feature.get_value(&TrivialEntity).unwrap();
     let is_enabled = specific_feature.is_enabled().unwrap();
 
     assert_eq!(name, "test feature flag 1".to_string());
-    assert_eq!(data_type, ValueKind::Boolean);
-    assert_eq!(is_enabled, false);
+    assert!(matches!(value, Value::Boolean(ref v) if v == &false));
+    assert!(!is_enabled);
 }
 
 #[rstest]
@@ -68,8 +81,8 @@ fn test_get_a_specific_property(setup_client: AppConfigurationClient) {
     let property = setup_client.get_property_proxy("test-property-1").unwrap();
 
     let name = property.get_name().unwrap();
-    let data_type = property.get_data_type().unwrap();
+    let value = property.get_value(&TrivialEntity).unwrap();
 
     assert_eq!(name, "Test Property 1");
-    assert_eq!(data_type, ValueKind::Boolean);
+    assert!(matches!(value, Value::Boolean(_)));
 }

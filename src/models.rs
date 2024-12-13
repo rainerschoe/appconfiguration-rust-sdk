@@ -66,7 +66,7 @@ pub(crate) struct Property {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
-pub enum ValueKind {
+pub(crate) enum ValueKind {
     #[serde(rename(deserialize = "NUMERIC"))]
     Numeric,
     #[serde(rename(deserialize = "BOOLEAN"))]
@@ -87,7 +87,7 @@ impl Display for ValueKind {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ConfigValue(pub(crate) serde_json::Value);
+pub(crate) struct ConfigValue(pub(crate) serde_json::Value);
 
 impl ConfigValue {
     pub fn as_i64(&self) -> Option<i64> {
@@ -133,7 +133,7 @@ pub(crate) struct SegmentRule {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct TargetingRule {
+pub(crate) struct TargetingRule {
     pub rules: Vec<Segments>,
     pub value: ConfigValue,
     pub order: u32,
@@ -141,19 +141,19 @@ pub struct TargetingRule {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct Segments {
+pub(crate) struct Segments {
     pub segments: Vec<String>,
 }
 
 #[cfg(test)]
-pub mod tests {
+pub(crate) mod tests {
 
     use super::*;
     use rstest::*;
     use std::{fs, path::PathBuf};
 
     #[fixture]
-    pub fn example_configuration_enterprise() -> Configuration {
+    pub(crate) fn example_configuration_enterprise() -> Configuration {
         // Create a configuration object from the data files
 
         let mut mocked_data = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -166,7 +166,7 @@ pub mod tests {
     }
 
     #[fixture]
-    pub fn configuration_feature1_enabled() -> Configuration {
+    pub(crate) fn configuration_feature1_enabled() -> Configuration {
         Configuration {
             environments: vec![Environment {
                 name: "name".to_string(),
@@ -189,7 +189,7 @@ pub mod tests {
     }
 
     #[fixture]
-    pub fn configuration_property1_enabled() -> Configuration {
+    pub(crate) fn configuration_property1_enabled() -> Configuration {
         Configuration {
             environments: vec![Environment {
                 name: "name".to_string(),

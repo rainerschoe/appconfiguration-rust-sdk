@@ -12,20 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::client::value::Value;
 use crate::errors::Result;
-use crate::Entity;
+use crate::{Entity, Value};
 
 pub trait Feature {
-    fn get_id(&self) -> &str;
-
     fn get_name(&self) -> Result<String>;
 
-    fn get_data_type(&self) -> Result<crate::models::ValueKind>;
-
     fn is_enabled(&self) -> Result<bool>;
-
-    fn get_enabled_value(&self) -> Result<crate::models::ConfigValue>;
 
     fn get_value(&self, entity: &impl Entity) -> Result<Value>;
 }

@@ -13,36 +13,32 @@
 // limitations under the License.
 
 use crate::client::AppConfigurationClient;
-
+use crate::tests::TrivialEntity;
 use rstest::*;
 
 use super::client_enterprise;
-use crate::{Feature, Property};
+use crate::{Feature, Property, Value};
 
 #[rstest]
 fn test_get_a_specific_feature(client_enterprise: AppConfigurationClient) {
-    use crate::models::ValueKind;
     let specific_feature = client_enterprise.get_feature_proxy("f1").unwrap();
 
     let name = specific_feature.get_name().unwrap();
-    let data_type = specific_feature.get_data_type().unwrap();
     let is_enabled = specific_feature.is_enabled().unwrap();
+    let value = specific_feature.get_value(&TrivialEntity).unwrap();
 
     assert_eq!(name, "F1".to_string());
-    assert_eq!(data_type, ValueKind::Numeric);
-    assert_eq!(is_enabled, true);
-    assert_eq!(specific_feature.get_enabled_value().unwrap().as_i64().unwrap(), 5);
+    assert!(is_enabled);
+    assert!(matches!(value, Value::Numeric(ref v) if v.as_i64() == Some(5)));
 }
 
 #[rstest]
 fn test_get_a_specific_property(client_enterprise: AppConfigurationClient) {
-    use crate::models::ValueKind;
     let property = client_enterprise.get_property_proxy("p1").unwrap();
 
     let name = property.get_name().unwrap();
-    let data_type = property.get_data_type().unwrap();
+    let value = property.get_value(&TrivialEntity).unwrap();
 
     assert_eq!(name, "p1");
-    assert_eq!(data_type, ValueKind::Numeric);
-    assert_eq!(property.get_value_default().unwrap().as_u64().unwrap(), 5);
+    assert!(matches!(value, Value::Numeric(ref v) if v.as_i64() == Some(5)));
 }

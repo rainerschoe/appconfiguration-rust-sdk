@@ -14,11 +14,11 @@
 
 use std::{collections::HashMap, env, thread, time::Duration};
 
-use appconfiguration_rust_sdk::{client::AppConfigurationClient, AttrValue, Entity, Feature, Property};
+use appconfiguration_rust_sdk::{
+    AppConfigurationClient, AttrValue, Entity, Feature, Property, Value,
+};
 use dotenvy::dotenv;
 use std::error::Error;
-
-type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Debug)]
 struct CustomerEntity {
@@ -33,8 +33,6 @@ impl Entity for CustomerEntity {
     }
 
     fn get_attributes(&self) -> HashMap<String, AttrValue> {
-        use AttrValue;
-
         HashMap::from_iter(vec![
             ("city".to_string(), AttrValue::String(self.city.clone())),
             ("radius".to_string(), AttrValue::Numeric(self.radius as f64)),
@@ -42,7 +40,7 @@ impl Entity for CustomerEntity {
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> std::result::Result<(), Box<dyn Error>> {
     dotenv().ok();
     let region = env::var("REGION").expect("REGION should be set.");
     let guid = env::var("GUID").expect("GUID should be set.");
@@ -70,13 +68,15 @@ fn main() -> Result<()> {
         match client.get_feature_proxy(&feature_id) {
             Ok(feature) => {
                 println!("Feature name: {}", feature.get_name()?);
-                println!("Feature id: {}", feature.get_id());
-                println!("Feature data type: {}", feature.get_data_type()?);
+                let value = feature.get_value(&entity)?;
+                let data_type = match &value {
+                    Value::Numeric(_) => "Numeric",
+                    Value::String(_) => "String",
+                    Value::Boolean(_) => "Boolean",
+                };
+                println!("Feature data type: {}", data_type);
                 println!("Is feature enabled: {}", feature.is_enabled()?);
-                println!(
-                    "Feature evaluated value is: {:?}",
-                    feature.get_value(&entity)?
-                );
+                println!("Feature evaluated value is: {value:?}");
             }
             Err(error) => {
                 println!("There was an error getting the Feature Flag. Error {error}",);
@@ -87,12 +87,14 @@ fn main() -> Result<()> {
         match client.get_property_proxy(&property_id) {
             Ok(property) => {
                 println!("Property name: {}", property.get_name()?);
-                println!("Property id: {}", property.get_id());
-                println!("Property data type: {}", property.get_data_type()?);
-                println!(
-                    "Property evaluated value is: {:?}",
-                    property.get_value(&entity)?
-                );
+                let value = property.get_value(&entity)?;
+                let data_type = match &value {
+                    Value::Numeric(_) => "Numeric",
+                    Value::String(_) => "String",
+                    Value::Boolean(_) => "Boolean",
+                };
+                println!("Property data type: {data_type}");
+                println!("Property evaluated value is: {value:?}");
             }
             Err(error) => {
                 println!("There was an error getting the Property. Error {error}",);

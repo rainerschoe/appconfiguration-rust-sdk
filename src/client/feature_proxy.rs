@@ -17,7 +17,7 @@ use std::io::Cursor;
 use murmur3::murmur3_32;
 
 use crate::entity::Entity;
-use crate::Feature;
+use crate::{Feature, Value};
 
 use super::feature_snapshot::FeatureSnapshot;
 use super::AppConfigurationClient;
@@ -38,29 +38,15 @@ impl<'a> FeatureProxy<'a> {
 }
 
 impl<'a> Feature for FeatureProxy<'a> {
-    fn get_id(&self) -> &str {
-        &self.feature_id
-    }
-
     fn get_name(&self) -> crate::errors::Result<String> {
         self.client.get_feature(&self.feature_id)?.get_name()
-    }
-
-    fn get_data_type(&self) -> crate::errors::Result<crate::models::ValueKind> {
-        self.client.get_feature(&self.feature_id)?.get_data_type()
     }
 
     fn is_enabled(&self) -> crate::errors::Result<bool> {
         self.client.get_feature(&self.feature_id)?.is_enabled()
     }
 
-    fn get_enabled_value(&self) -> crate::errors::Result<crate::models::ConfigValue> {
-        self.client
-            .get_feature(&self.feature_id)?
-            .get_enabled_value()
-    }
-
-    fn get_value(&self, entity: &impl Entity) -> crate::errors::Result<super::value::Value> {
+    fn get_value(&self, entity: &impl Entity) -> crate::errors::Result<Value> {
         self.client.get_feature(&self.feature_id)?.get_value(entity)
     }
 }

@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod client;
-pub mod entity;
-pub mod errors;
-pub mod models;
-mod segment_evaluation;
+mod client;
+mod entity;
+mod errors;
 mod feature;
+mod models;
 mod property;
+mod segment_evaluation;
+mod value;
 
+pub use client::AppConfigurationClient;
+pub use entity::{Entity, AttrValue};
 pub use feature::Feature;
 pub use property::Property;
-pub use entity::{AttrValue, Entity};
+pub use value::Value;
+pub use errors::{Result, Error};
 
 #[cfg(test)]
 mod tests;
